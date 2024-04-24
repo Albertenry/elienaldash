@@ -47,6 +47,5 @@ def renderizar_dashboard():
     st.markdown("---")
 
 
-
 # Chama a função para renderizar o dashboard
 renderizar_dashboard()

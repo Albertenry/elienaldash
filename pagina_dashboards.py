@@ -46,6 +46,19 @@ def renderizar_dashboard():
     st.markdown("---")
     st.markdown("---")
 
+    def obter_disponibilidade():
+        conn = conectar_bd()
+        cur = conn.cursor()
+        cur.execute("SELECT disponibilidade FROM bsbdasha")
+
+        dados_disponibilidade = cur.fetchall()
+
+        conn.close()
+
+        return dados_disponibilidade
+    st.write("Dados de Disponibilidade:")
+    st.write(obter_disponibilidade())
+
 
 # Chama a função para renderizar o dashboard
 renderizar_dashboard()

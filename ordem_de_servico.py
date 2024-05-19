@@ -4,29 +4,26 @@ import psycopg2
 from psycopg2 import sql
 
 # Função para calcular a disponibilidade
-def calcular_disponibilidade(total_horas, total_horas_mes):
-    return (total_horas_mes - total_horas) / total_horas_mes
+
+def calcular_disponibilidade(mtbf, mttr):
+    return (mtbf / (mtbf + mttr)) * 100
 
 # Função para calcular a indisponibilidade
 
-
 def calcular_indisponibilidade(total_horas, total_horas_mes):
-    return 1 - calcular_disponibilidade(total_horas, total_horas_mes)
+    return (total_horas_mes / total_horas) * 100
 
 # Função para calcular o MTTR (Mean Time To Repair)
 
-
-def calcular_mttr(quantidade_ordens_servico, total_horas_mes):
-    return total_horas_mes / quantidade_ordens_servico
+def calcular_mttr(qtd_ordens_servico, total_horas_mes):
+    return total_horas_mes / qtd_ordens_servico
 
 # Função para calcular o MTBF (Mean Time Between Failures)
 
-
-def calcular_mtbf(disponibilidade, indisponibilidade):
-    return disponibilidade / indisponibilidade
+def calcular_mtbf(total_horas, total_horas_mes, qtd_ordens_servico):
+    return (total_horas - total_horas_mes) / qtd_ordens_servico
 
 # Função para conectar ao banco de dados PostgreSQL
-
 
 def conectar_bd():
     conn = psycopg2.connect(
@@ -36,8 +33,6 @@ def conectar_bd():
         password="root"
     )
     return conn
-
-# Função para verificar se a tabela existe no banco de dados
 
 
 def tabela_existe(nome_tabela, cursor):
@@ -52,8 +47,6 @@ def tabela_existe(nome_tabela, cursor):
         (nome_tabela,)
     )
     return cursor.fetchone()[0]
-
-# Função para criar a tabela no banco de dados caso ela não exista
 
 
 def criar_tabela(nome_tabela, cursor):
@@ -74,20 +67,7 @@ def criar_tabela(nome_tabela, cursor):
         """).format(sql.Identifier(nome_tabela))
     )
 
-# Função para inserir dados na tabela do banco de dados
-
-
-def inserir_dados(cliente,
-                  equipamento,
-                  mes,
-                  qtd_ordens_servico,
-                  total_horas,
-                  total_horas_mes,
-                  disponibilidade,
-                  indisponibilidade,
-                  mttr,
-                  mtbf
-                  ):
+def inserir_dados(cliente, equipamento, mes, qtd_ordens_servico, total_horas, total_horas_mes, disponibilidade, indisponibilidade, mttr, mtbf):
     conn = conectar_bd()
     cur = conn.cursor()
 
@@ -100,13 +80,8 @@ def inserir_dados(cliente,
     conn.commit()
     conn.close()
 
-# Função para renderizar a página de cadastro de ordem de serviço
-
-
 def render_pagina():
     st.title("Cadastrar Ordem de Serviço")
-
-    # Campos do formulário
     cliente = st.text_input("Cliente")
     equipamento = st.text_input("Equipamento")
     meses = [
@@ -117,30 +92,23 @@ def render_pagina():
     qtd_ordens_servico = st.number_input(
         "Quantidade de Ordem de Serviço", min_value=1)
     total_horas_mes = st.number_input("Total horas/Mês", min_value=1)
-    total_horas = 730  # Fixa o total de horas por mês
+    total_horas = 730
 
-    # Botão para calcular e inserir os dados
     if st.button("Calcular e Inserir Dados"):
-        # Calculando métricas
-        disponibilidade = calcular_disponibilidade(
-            total_horas, total_horas_mes)
+        mttr = calcular_mttr(qtd_ordens_servico, total_horas_mes)
+        mtbf = calcular_mtbf(total_horas, total_horas_mes, qtd_ordens_servico)
+        disponibilidade = calcular_disponibilidade(mtbf, mttr)
         indisponibilidade = calcular_indisponibilidade(
             total_horas, total_horas_mes)
-        mttr = calcular_mttr(qtd_ordens_servico, total_horas_mes)
-        mtbf = calcular_mtbf(disponibilidade, indisponibilidade)
 
-        # Inserindo dados no banco de dados
+
         inserir_dados(cliente, equipamento, mes, qtd_ordens_servico, total_horas,
                       total_horas_mes, disponibilidade, indisponibilidade, mttr, mtbf)
 
-        # Exibindo mensagem de sucesso
         st.success("Dados inseridos com sucesso!")
 
-        if st.button("Novo Cadastro"):
-            # Define os campos do formulário como vazios ou padrão
-            cliente = ""
-            equipamento = ""
-            mes = meses[datetime.now().month - 1]
-            qtd_ordens_servico = 1
-            total_horas_mes = 1
-            total_horas = 730
+    #if st.button("Novo Cadastro"):
+    #   st.experimental_rerun()
+
+
+render_pagina()

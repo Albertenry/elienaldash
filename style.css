@@ -1,0 +1,29 @@
+/* styles.css */
+.full-width {
+    width: 100%;
+    max-width: 100%;
+    display: block;
+}
+
+.full-width-table {
+    width: 100%;
+    display: block;
+    overflow-x: auto;
+}
+
+.table-container {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.table-container th, .table-container td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.table-container th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}

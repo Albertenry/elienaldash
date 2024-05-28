@@ -2,7 +2,7 @@ import streamlit as st
 import psycopg2
 import pandas as pd
 import plotly.express as px
-import numpy as np
+
 
 def conectar_bd():
     conn = psycopg2.connect(
@@ -13,6 +13,7 @@ def conectar_bd():
     )
     return conn
 
+
 def obter_dados_clientes():
     conn = conectar_bd()
     cur = conn.cursor()
@@ -20,6 +21,7 @@ def obter_dados_clientes():
     clientes = [row[0] for row in cur.fetchall()]
     conn.close()
     return clientes
+
 
 def obter_dados_equipamentos():
     conn = conectar_bd()
@@ -29,6 +31,7 @@ def obter_dados_equipamentos():
     conn.close()
     return equipamentos
 
+
 def obter_dados_meses():
     conn = conectar_bd()
     cur = conn.cursor()
@@ -37,11 +40,12 @@ def obter_dados_meses():
     conn.close()
     return meses
 
+
 def obter_dados_filtrados(cliente, equipamento, meses):
     conn = conectar_bd()
     cur = conn.cursor()
     query = """
-        SELECT mes, disponibilidade, indisponibilidade, mttr, mtbf
+        SELECT mes, qtd_ordens_servico, disponibilidade, indisponibilidade, mttr, mtbf
         FROM bsbdasha
         WHERE cliente = %s AND equipamento = %s AND mes IN %s
     """
@@ -50,13 +54,16 @@ def obter_dados_filtrados(cliente, equipamento, meses):
     conn.close()
     return dados
 
+
 def calcular_metricas(dados):
-    df = pd.DataFrame(dados, columns=['mes', 'disponibilidade', 'indisponibilidade', 'mttr', 'mtbf'])
+    df = pd.DataFrame(
+        dados, columns=['mes', 'qtd_ordens_servico', 'disponibilidade', 'indisponibilidade', 'mttr', 'mtbf'])
     disponibilidade_media = df['disponibilidade'].mean()
     indisponibilidade_media = df['indisponibilidade'].mean()
     mttr_media = df['mttr'].mean()
     mtbf_media = df['mtbf'].mean()
     return df, disponibilidade_media, indisponibilidade_media, mttr_media, mtbf_media
+
 
 def render_dashboard():
     st.title("Dashboard")
@@ -66,13 +73,18 @@ def render_dashboard():
     meses = obter_dados_meses()
 
     cliente_selecionado = st.selectbox("Selecione o Cliente", clientes)
-    equipamento_selecionado = st.selectbox("Selecione o Equipamento", equipamentos)
+    equipamento_selecionado = st.selectbox(
+        "Selecione o Equipamento", equipamentos)
     meses_selecionados = st.multiselect("Selecione o(s) Mês(es)", meses)
 
     if cliente_selecionado and equipamento_selecionado and meses_selecionados:
-        dados = obter_dados_filtrados(cliente_selecionado, equipamento_selecionado, meses_selecionados)
+        dados = obter_dados_filtrados(
+            cliente_selecionado, equipamento_selecionado, meses_selecionados)
         if dados:
-            df, disponibilidade, indisponibilidade, mttr, mtbf = calcular_metricas(dados)
+            df, disponibilidade, indisponibilidade, mttr, mtbf = calcular_metricas(
+                dados)
+
+            st.markdown('---')
 
             # Cabeçalho com as métricas
             dst1, dst2, dst3, dst4 = st.columns([1, 1, 1, 1])
@@ -93,15 +105,42 @@ def render_dashboard():
                 st.write('**MTBF:**')
                 st.info(f"{mtbf:.2f} horas")
 
-            # Gráfico de disponibilidade
+            # Gráficos
             st.markdown('---')
-            st.markdown('---')
-            fig = px.line(df, x='mes', y='disponibilidade', title='Evolução da Disponibilidade')
-            st.plotly_chart(fig, use_container_width=True)
+
+            col1, col2, col3 = st.columns([1, 1, 1])
+
+            with col1:
+                fig = px.bar(df, x='mes', y='disponibilidade',
+                             title='Disponibilidade (%)', range_y=[95, 100])
+                st.plotly_chart(fig, use_container_width=True)
+
+            with col2:
+                fig = px.area(df, x='mes', y='indisponibilidade',
+                              title='Indisponibilidade (%)', range_y=[0, 3])
+                st.plotly_chart(fig, use_container_width=True)
+
+            with col1:
+                fig = px.area(df, x='mes', y='mttr',
+                              title='MTTR', range_y=[0, 3])
+                st.plotly_chart(fig, use_container_width=True)
+
+            with col2:
+                fig = px.line(df, x='mes', y='mtbf',
+                              title='MTBF', range_y=[360, 370])
+                st.plotly_chart(fig, use_container_width=True)
+
+            # Gráfico de rosca para comparar a quantidade de ordens de serviço entre os meses escolhidos
+            with col3:
+                fig = px.pie(df, values='qtd_ordens_servico', names='mes', hole=0.4,
+                             title='Qtd de Ordens de Serviços')
+                st.plotly_chart(fig, use_container_width=True)
+
         else:
             st.warning("Nenhum dado encontrado para os filtros selecionados.")
     else:
         st.info("Por favor, selecione o cliente, equipamento e os meses.")
+
 
 # Chama a função para renderizar o dashboard
 render_dashboard()
